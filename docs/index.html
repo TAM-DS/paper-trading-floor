@@ -23,17 +23,18 @@
   .fill { color:var(--lime); }
   .stop { color:var(--amber); }
   footer { padding:8px 36px 28px; color:#8ea092; }
+@media (max-width: 760px) { header { display:block; padding:20px; } main, .grid, .lanes { display:grid; grid-template-columns:1fr; padding:20px; } .banner { margin:16px 20px; display:block; } table { display:block; overflow-x:auto; width:calc(100% - 40px); margin:0 20px 18px; } footer { padding:20px; } }
 </style>
 </head>
 <body>
 <header>
-  <div><div class="kicker">Energy and capital markets</div><h1>Autonomous inside the paper book.</h1></div>
+  <div><div class="kicker">Energy and capital markets</div><h1>Deterministic inside the paper book.</h1></div>
   <div class="kicker">No venue</div>
 </header>
 <div class="lanes">
   <section class="lane"><h2>Market MCP</h2><div class="tool"><span>get_curve</span><span class="yes">open</span></div><div class="tool"><span>get_quote</span><span class="yes">open</span></div><div class="tool"><span>place_venue_order</span><span class="no">denied</span></div></section>
   <section class="lane"><h2>Risk MCP</h2><div class="tool"><span>check_limit</span><span class="yes">open</span></div><div class="tool"><span>ERCOT cap</span><span>50</span></div><div class="tool"><span>Gas cap</span><span>20</span></div></section>
-  <section class="lane"><h2>OMS MCP</h2><div class="tool"><span>submit_paper_order</span><span class="yes">open</span></div><div class="tool"><span>place_venue_order</span><span class="no">no path</span></div><div class="tool"><span>street fill</span><span class="no">false</span></div></section>
+  <section class="lane"><h2>Paper OMS MCP</h2><div class="tool"><span>submit_paper_order</span><span class="yes">open</span></div><div class="tool"><span>place_venue_order</span><span class="no">no path</span></div><div class="tool"><span>street fill</span><span class="no">false</span></div></section>
 </div>
 <table>
   <thead><tr><th>Intent</th><th>Quote</th><th>Risk</th><th>Result</th></tr></thead>
@@ -43,6 +44,6 @@
     <tr><td>NGRD · 40</td><td>18.40 USD · 7 Oct</td><td class="fill">allowed</td><td class="fill">paper fill · venue null</td></tr>
   </tbody>
 </table>
-<footer>Fixtures, not live ERCOT or Henry Hub. No broker, no TT, no ICE, no P&L claim.</footer>
+<footer>Static synthetic fixtures, not live ERCOT or Henry Hub. Three stdio MCP servers are tested separately; this page is a static view. No broker, no TT, no ICE, no P&L claim.</footer>
 </body>
 </html>

@@ -1,0 +1,42 @@
+{
+  "transport": "MCP stdio",
+  "data": "synthetic fixtures",
+  "tools": {
+    "market": [
+      "get_curve",
+      "get_quote"
+    ],
+    "risk": [
+      "check_limit"
+    ],
+    "oms": [
+      "submit_paper_order"
+    ]
+  },
+  "quote": {
+    "ok": true,
+    "tool": "get_curve",
+    "as_of": "2026-10-07",
+    "value": 46.2,
+    "unit": "USD/MWh",
+    "symbol": "ERCOT.HB_HOUSTON"
+  },
+  "risk": {
+    "ok": true,
+    "allowed": true,
+    "cap": 50.0,
+    "reason": null
+  },
+  "fill": {
+    "ok": true,
+    "fill": {
+      "fill_id": "paper-1",
+      "book": "ercot-power",
+      "symbol": "ERCOT.HB_HOUSTON",
+      "notional": 25.0,
+      "venue": null
+    }
+  },
+  "venue_tool_rejected": true,
+  "street_fill": false
+}

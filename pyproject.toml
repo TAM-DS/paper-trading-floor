@@ -1,8 +1,19 @@
 [project]
 name = "paper-trading-floor"
 version = "1.0.0"
-description = "Multi-agent paper floor. MCP tools can quote, check limits, and fill paper orders. No venue."
+description = "Three stdio MCP servers and a deterministic paper floor over synthetic fixtures. No venue."
 requires-python = ">=3.11"
+dependencies = ["mcp==1.30.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
