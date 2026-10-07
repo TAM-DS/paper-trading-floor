@@ -27,3 +27,7 @@ python -m pytest
 ```
 
 Related: [capital-markets-research-desk](https://github.com/TAM-DS/capital-markets-research-desk) produces the memo. [investment-gems](https://github.com/TAM-DS/investment-gems) produces a watchlist. Neither is an order on this floor.
+
+## Dashboard
+
+Open [docs/index.html](docs/index.html). It shows the same fixture decisions as the tests. It is not a live market feed.
