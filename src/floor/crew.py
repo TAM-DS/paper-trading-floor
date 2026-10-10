@@ -43,7 +43,9 @@ def verify_review(review, evidence):
         matches=re.findall(r'\d+(?:\.\d+)?|%|\$|\b(?:highest|lowest|largest|smallest|higher|lower|greater|superior|inferior|more stable|most volatile|least volatile|outperform\w*)\b',prose,re.I)
         if matches:
             issues.append(f'Unchecked numerical or ranking language in narrative {field}: {", ".join(dict.fromkeys(matches))}. Move comparisons to structured claims; rewrite this field as a limitation or research question.')
-        if re.search(r'\btotal[ -]returns?\b',prose,re.I): issues.append(f'{field}: Total-return claim unsupported: dividends excluded')
+        disclosure = field.startswith('uncertainties[') and prose.strip().casefold() == 'dividend income and total return data are not included.'
+        if re.search(r'\btotal[ -]returns?\b',prose,re.I) and not disclosure:
+            issues.append(f'{field}: Total-return claim unsupported: dividends excluded')
     return list(dict.fromkeys(issues))
 
 def run_crew(evidence,purpose):

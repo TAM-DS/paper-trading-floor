@@ -94,3 +94,18 @@ def test_repair_uses_independent_editor_and_exact_feedback(monkeypatch):
     result=run_crew(EVIDENCE,'Review')
     assert result['status']=='HUMAN_REVIEW_REQUIRED'
     assert len(result['attempts'])==2
+
+
+def test_exact_missing_total_return_disclosure_allowed():
+    assert verify_review(review(uncertainties=['Dividend income and total return data are not included.']),EVIDENCE)==[]
+
+@pytest.mark.parametrize('text',[
+    'Dividend income and total return data are not included. Total return is strong.',
+    'Total return is strong because dividend income is not included.',
+    'Total return data are not included, but total return is positive.',
+])
+def test_negation_does_not_bypass_total_return_guard(text):
+    assert any('Total-return' in x for x in verify_review(review(uncertainties=[text]),EVIDENCE))
+
+def test_disclosure_exception_is_only_for_uncertainties():
+    assert verify_review(review(thesis='Dividend income and total return data are not included.'),EVIDENCE)
