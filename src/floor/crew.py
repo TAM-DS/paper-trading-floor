@@ -48,11 +48,12 @@ def run_crew(evidence,purpose):
     if not os.getenv('OPENAI_API_KEY'): raise ValueError('Set OPENAI_API_KEY locally to run CrewAI')
     llm=LLM(model=os.getenv('CREWAI_MODEL','openai/gpt-4.1-mini'),temperature=0)
     roles=['Market researcher','Skeptical risk reviewer','Evidence editor']
-    definitions={'return_pct':'Period split-adjusted PRICE return; excludes dividends. Never total return.', 'momentum_20d_pct':'Price change over 20 trading sessions.', 'volatility_pct':'Sample daily return standard deviation times sqrt(252), in percent.', 'max_drawdown_pct':'Negative peak-to-trough price drawdown in this observed sample.', 'avg_dollar_volume_20d':'Mean close times share volume over last 20 sessions, USD/day.', 'close':'Last observed historical close, USD.', 'bars':'Daily trading-session observations, not calendar days.'}
+    definitions={'return_pct':'Period split-adjusted PRICE return; excludes dividends. Never total return.', 'momentum_20d_pct':'Price change over 20 trading sessions.', 'volatility_pct':'Sample daily return standard deviation times sqrt(252), in percent.', 'max_drawdown_pct':'Signed negative peak-to-trough price drawdown. Lowest means most negative/deepest loss; highest means closest to zero/shallowest loss. Never rank by absolute magnitude.', 'avg_dollar_volume_20d':'Mean close times share volume over last 20 sessions, USD/day.', 'close':'Last observed historical close, USD.', 'bars':'Daily trading-session observations, not calendar days.'}
+    rankings={metric:dict(highest=[r['ticker'] for r in evidence if r[metric]==max(x[metric] for x in evidence)],lowest=[r['ticker'] for r in evidence if r[metric]==min(x[metric] for x in evidence)]) for metric in ('volatility_pct','max_drawdown_pct') if all(metric in r for r in evidence)}
     agents=[Agent(role=role,goal=purpose,backstory='Bounded research only. No order authority.',llm=llm,allow_delegation=False,max_iter=3,verbose=False) for role in roles]
     tasks=[]
     for i,agent in enumerate(agents):
-        instructions=(f'{purpose}. Role: {roles[i]}. Evidence: {json.dumps(evidence)}. Definitions: {json.dumps(definitions)}. '
+        instructions=(f'{purpose}. Role: {roles[i]}. Evidence: {json.dumps(evidence)}. Definitions: {json.dumps(definitions)}. Python-verified signed rankings: {json.dumps(rankings)}. '
         'Return thesis, counterargument, evidence_ids, uncertainties, and at least one structured claim with evidence_id (exact sha256), metric, value, comparison (observation/highest/lowest). '
         'All numeric values and rankings MUST appear only in claims, not narrative. Narrative must contain no digits, percentages, dollar signs, or superlatives/rankings. '
         'Use price return wording. Never claim total return. Date range and daily frequency are supplied. No external facts, forecasts, order instructions, or assertions about fundamentals. '
@@ -65,4 +66,20 @@ def run_crew(evidence,purpose):
     review=result.pydantic
     if review is None: raise ValueError('Crew failed structured output validation')
     issues=verify_review(review,evidence)
-    return dict(status='CORRECTION_REQUIRED' if issues else 'HUMAN_REVIEW_REQUIRED',review=review.model_dump(),validation_issues=issues,usage=str(result.token_usage),note='Structured values and rankings checked. Narrative meaning still requires human review. No trade authority.')
+    attempts=[dict(review=review.model_dump(),validation_issues=issues,usage=str(result.token_usage))]
+    if issues:
+        instruction=(f'Correct this draft using only the supplied evidence. Evidence: {json.dumps(evidence)}. Definitions: {json.dumps(definitions)}. '
+        f'Python-verified rankings: {json.dumps(rankings)}. Failed draft: {review.model_dump_json()}. Validation errors: {json.dumps(issues)}. '
+        'All numeric values and comparisons belong only in structured claims. Narrative must have no digits, percentage or dollar signs, or ranking/superlative words. '
+        'Claims use exact evidence sha256, metric, numeric value, comparison. Prefer observation unless a ranking is essential. '
+        'Deepest negative drawdown is lowest. Do not invent total returns or fundamental facts. Return the complete Review schema.')
+        repair=Task(description=instruction,expected_output='Corrected structured Review',agent=agents[-1],output_pydantic=Review)
+        try:
+            corrected=Crew(agents=[agents[-1]],tasks=[repair],process=Process.sequential,verbose=False).kickoff()
+            if corrected.pydantic is None: raise ValueError('Missing corrected schema')
+            review=corrected.pydantic
+            issues=verify_review(review,evidence)
+            attempts.append(dict(review=review.model_dump(),validation_issues=issues,usage=str(corrected.token_usage)))
+        except Exception as error:
+            attempts.append(dict(correction_error=type(error).__name__))
+    return dict(attempts=attempts,status='CORRECTION_REQUIRED' if issues else 'HUMAN_REVIEW_REQUIRED',review=review.model_dump(),validation_issues=issues,usage=str(result.token_usage),note='Structured values and rankings checked. Narrative meaning still requires human review. No trade authority.')

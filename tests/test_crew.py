@@ -39,3 +39,28 @@ def test_actual_crew_constructs_and_flags_output(monkeypatch):
     monkeypatch.setattr(crewai.Crew,'kickoff',kickoff)
     assert run_crew(EVIDENCE,'Review')['status']=='HUMAN_REVIEW_REQUIRED'
     assert run_crew([dict(ticker='XOM',sha256='xom',volatility_pct=10)],'Review')['status']=='CORRECTION_REQUIRED'
+
+
+@pytest.mark.skipif(importlib.util.find_spec('crewai') is None,reason='optional ai extra not installed')
+def test_bounded_correction_preserves_failed_draft(monkeypatch):
+    import crewai
+    monkeypatch.setenv('OPENAI_API_KEY','offline-test-not-a-key')
+    calls=[]
+    def kickoff(self):
+        calls.append(len(self.tasks))
+        output=review(claims=[Claim(evidence_id='xom',metric='volatility_pct',value=27.52,comparison='highest')]) if len(calls)==1 else review()
+        return SimpleNamespace(pydantic=output,token_usage={})
+    monkeypatch.setattr(crewai.Crew,'kickoff',kickoff)
+    result=run_crew(EVIDENCE,'Review')
+    assert calls==[3,1]
+    assert result['status']=='HUMAN_REVIEW_REQUIRED'
+    assert result['attempts'][0]['validation_issues']
+    assert result['attempts'][1]['validation_issues']==[]
+
+
+def test_deepest_signed_drawdown_is_lowest():
+    evidence=[dict(ticker='XOM',sha256='xom',max_drawdown_pct=-20),dict(ticker='LNG',sha256='lng',max_drawdown_pct=-24)]
+    good=review(evidence_ids=['lng'],claims=[Claim(evidence_id='lng',metric='max_drawdown_pct',value=-24,comparison='lowest')])
+    assert verify_review(good,evidence)==[]
+    bad=good.model_copy(update={'claims':[Claim(evidence_id='lng',metric='max_drawdown_pct',value=-24,comparison='highest')]})
+    assert verify_review(bad,evidence)
