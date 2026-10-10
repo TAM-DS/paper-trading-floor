@@ -128,3 +128,44 @@ def test_excluded_total_return_effects_disclosure():
     assert verify_review(review(uncertainties=[text]), EVIDENCE) == []
     assert verify_review(review(uncertainties=[text+" Total return is strong."]), EVIDENCE)
     assert verify_review(review(thesis=text), EVIDENCE)
+
+
+def test_short_citations_resolve_exactly_without_fuzzy_matching():
+    from floor.crew import evidence_references, resolve_references
+    model_rows,refs=evidence_references(EVIDENCE)
+    assert model_rows[0]['sha256']=='E1'
+    assert EVIDENCE[0]['sha256']=='xom'
+    raw=review(evidence_ids=['E1'],claims=[Claim(evidence_id='E1',metric='volatility_pct',value=27.52)])
+    resolved=resolve_references(raw,refs)
+    assert verify_review(resolved,EVIDENCE)==[]
+    assert raw.claims[0].evidence_id=='E1'
+    bad=raw.model_copy(update={'claims':[Claim(evidence_id='E99',metric='volatility_pct',value=27.52)]})
+    assert 'Claim cites unknown evidence' in verify_review(resolve_references(bad,refs),EVIDENCE)
+    wrong=raw.model_copy(update={'claims':[Claim(evidence_id='E1',metric='volatility_pct',value=32.2689)]})
+    assert verify_review(resolve_references(wrong,refs),EVIDENCE)
+
+
+def test_duplicate_evidence_cannot_create_ambiguous_reference_map():
+    from floor.crew import evidence_references
+    with pytest.raises(ValueError): evidence_references([EVIDENCE[0],EVIDENCE[0]])
+
+
+def test_scope_limitation_does_not_assert_total_return():
+    text='The analysis excludes dividends and fundamental business data, which are critical for total return and investment quality assessment.'
+    assert verify_review(review(uncertainties=[text]),EVIDENCE)==[]
+    assert verify_review(review(uncertainties=[text+' Total return is positive.']),EVIDENCE)
+
+
+@pytest.mark.skipif(importlib.util.find_spec('crewai') is None,reason='optional ai extra not installed')
+def test_crew_uses_short_references_and_preserves_raw_audit(monkeypatch):
+    import crewai
+    monkeypatch.setenv('OPENAI_API_KEY','offline-test-not-a-key')
+    def kickoff(self):
+        assert '"sha256": "E1"' in self.tasks[0].description
+        return SimpleNamespace(pydantic=review(evidence_ids=['E1'],claims=[Claim(evidence_id='E1',metric='volatility_pct',value=27.52)]),token_usage={})
+    monkeypatch.setattr(crewai.Crew,'kickoff',kickoff)
+    result=run_crew(EVIDENCE,'Review')
+    assert result['status']=='HUMAN_REVIEW_REQUIRED'
+    assert result['review']['claims'][0]['evidence_id']=='xom'
+    assert result['attempts'][0]['raw_model_review']['claims'][0]['evidence_id']=='E1'
+    assert result['evidence_reference_map']['E1']=='xom'
