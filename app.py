@@ -75,6 +75,7 @@ book.db.close()
 st.subheader('CrewAI evidence review')
 st.caption('Runs three actual model tasks: researcher, skeptical reviewer, evidence editor. Optional API costs apply. Agents receive calculated evidence only and have no order tool.')
 if st.button('Run CrewAI review'):
+    st.session_state.pop('crew',None)
     try:
         with st.spinner('Researching, challenging, and assembling structured review'):
             st.session_state['crew']=run_crew(metrics,'Produce a bounded market research brief for human review')
