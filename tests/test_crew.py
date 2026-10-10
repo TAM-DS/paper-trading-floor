@@ -109,3 +109,9 @@ def test_negation_does_not_bypass_total_return_guard(text):
 
 def test_disclosure_exception_is_only_for_uncertainties():
     assert verify_review(review(thesis='Dividend income and total return data are not included.'),EVIDENCE)
+
+
+def test_grounded_counterargument_total_return_limitation_allowed():
+    text='Price observations alone cannot establish investment suitability or predict future performance, as they exclude dividend income and fundamental business factors that materially affect total returns and risk profiles.'
+    assert verify_review(review(counterargument=text),EVIDENCE)==[]
+    assert verify_review(review(counterargument=text+" Total return is strong."),EVIDENCE)
