@@ -14,7 +14,7 @@ python -m pytest
 python -m streamlit run app.py
 ```
 
-Set `MASSIVE_API_KEY` and, for optional model review, `OPENAI_API_KEY` in your local run configuration environment variables. `CREWAI_MODEL` defaults to `openai/gpt-4.1-mini`; override with an available CrewAI-compatible model. Keys never belong in GitHub or chat. `.env.example` documents variable names; the app does not automatically load `.env`.
+Set `MASSIVE_API_KEY` and, for optional model review, `OPENAI_API_KEY` in your local run configuration environment variables. `CREWAI_MODEL` defaults to `openai/gpt-4.1-mini`; override with an available CrewAI-compatible model. Keys never belong in GitHub or chat. `.env.example` documents variable names; the app automatically loads `.env` from the project folder at startup. File values take precedence over shell values.
 
 ## Three explicit data modes
 
@@ -26,7 +26,7 @@ Choose 1–5 US equity/ETF tickers and at least 60 trading sessions. Energy equi
 
 ## Actual CrewAI execution
 
-The optional review creates a sequential Crew with three Agents and three Tasks, then calls `kickoff()`: market researcher → skeptical risk reviewer → evidence editor. The final output uses a Pydantic schema. Unknown evidence identifiers are rejected. Agents receive precomputed metrics, have no external tools, and cannot submit orders. Identifier validation does not prove semantic accuracy; all model text requires human review. Model use incurs provider charges. A failed call accepts no new review.
+The optional review creates a sequential Crew with three Agents and three Tasks, then calls `kickoff()`: market researcher → skeptical risk reviewer → evidence editor. The final output uses a Pydantic schema. Structured metric values and highest/lowest rankings are checked against Python evidence. Unknown IDs, incorrect values/rankings, numeric narrative and unsupported total-return wording flag the draft as `CORRECTION_REQUIRED`. Flagged drafts are withheld from the readable brief and retained in an audit expander. Agents receive precomputed metrics, have no external tools, and cannot submit orders. Identifier validation does not prove semantic accuracy; all model text requires human review. Model use incurs provider charges. A failed call accepts no new review.
 
 ## Financial interpretation
 
@@ -41,3 +41,11 @@ This is a local portfolio research/simulation application, not customer producti
 [Legacy fixture scope](docs/legacy-fixture-scope.md) preserves the previous deterministic/protocol implementation and its limitations. Existing tests remain alongside the new market-data tests. The interactive app is `app.py`; `docs/index.html` remains the older static fixture view.
 
 [Massive aggregate API](https://massive.com/docs/rest/stocks/aggregates/custom-bars) · [CrewAI documentation](https://docs.crewai.com/)
+
+## Local launch after configuring .env
+
+```bash
+python -m streamlit run app.py
+```
+
+The review shows qualitative thesis, challenge, checked observations and uncertainties. Passing structured checks does not establish semantic correctness or authorize a trade.

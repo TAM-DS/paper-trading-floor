@@ -76,7 +76,7 @@ def analytics(data):
     peak=closes[0]; dd=0
     for p in closes: peak=max(peak,p); dd=min(dd,p/peak-1)
     vol=statistics.stdev(returns)*math.sqrt(252)
-    return dict(ticker=data['ticker'],source=data['source'],as_of=data['as_of'],sha256=data['sha256'],close=closes[-1],return_pct=100*(closes[-1]/closes[0]-1),momentum_20d_pct=100*(closes[-1]/closes[-21]-1),volatility_pct=100*vol,max_drawdown_pct=100*dd,avg_dollar_volume_20d=statistics.mean(r['c']*r['v'] for r in rows[-20:]),bars=len(rows))
+    return dict(ticker=data['ticker'],source=data['source'],as_of=data['as_of'],sha256=data['sha256'],start=data['start'],end=data['end'],frequency='daily',return_definition='split-adjusted price return, excludes dividends',close=closes[-1],return_pct=100*(closes[-1]/closes[0]-1),momentum_20d_pct=100*(closes[-1]/closes[-21]-1),volatility_pct=100*vol,max_drawdown_pct=100*dd,avg_dollar_volume_20d=statistics.mean(r['c']*r['v'] for r in rows[-20:]),bars=len(rows))
 
 def backtest(data, cost_bps=10):
     """Fixed 20-day SMA; prior close signal, next-open execution, open-to-open returns."""

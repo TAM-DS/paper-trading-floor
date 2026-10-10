@@ -1,12 +1,15 @@
 import sys
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).parent/'src'))
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).parent / ".env", override=True)
 import uuid
 from datetime import date, timedelta
 import pandas as pd
 import streamlit as st
 from floor.market import MarketData, DataError, analytics, backtest
 from floor.crew import run_crew
+from floor.review_ui import render_review
 st.set_page_config(page_title="paper-trading-floor",page_icon="📊",layout="wide")
 st.title("Paper Trading Floor")
 st.caption("Research → challenge → human review | No broker connection")
@@ -81,4 +84,4 @@ if st.button('Run CrewAI review'):
             st.session_state['crew']=run_crew(metrics,'Produce a bounded market research brief for human review')
     except Exception as e:
         st.error(f'Crew review failed ({type(e).__name__}). Check local credentials, model access, and optional ai installation. No review accepted.')
-if 'crew' in st.session_state: st.json(st.session_state['crew'])
+if 'crew' in st.session_state: render_review(st.session_state['crew'],metrics)

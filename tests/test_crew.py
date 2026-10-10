@@ -1,17 +1,41 @@
 import importlib.util
 from types import SimpleNamespace
 import pytest
-from floor.crew import run_crew,Review
+from floor.crew import run_crew,Review,Claim,verify_review
+
+EVIDENCE=[dict(ticker='XOM',sha256='xom',volatility_pct=27.5161),dict(ticker='LNG',sha256='lng',volatility_pct=32.2689)]
+def review(**kwargs):
+    values=dict(thesis='Mixed risk profiles.',counterargument='Price momentum alone omits business context.',evidence_ids=['xom'],uncertainties=['Fundamentals are absent.'],claims=[Claim(evidence_id='xom',metric='volatility_pct',value=27.52)])
+    values.update(kwargs)
+    return Review(**values)
+
+def test_rounded_value_passes():
+    assert verify_review(review(),EVIDENCE)==[]
+
+def test_wrong_ranking_caught():
+    r=review(claims=[Claim(evidence_id='xom',metric='volatility_pct',value=27.52,comparison='highest')])
+    assert any('ranking' in issue for issue in verify_review(r,EVIDENCE))
+
+def test_wrong_number_caught():
+    r=review(claims=[Claim(evidence_id='xom',metric='volatility_pct',value=22)])
+    assert any('incorrect' in issue for issue in verify_review(r,EVIDENCE))
+
+@pytest.mark.parametrize('text',['Strong total return','Volatility is 27.52%','XOM has the highest volatility'])
+def test_unchecked_narrative_caught(text):
+    assert verify_review(review(thesis=text),EVIDENCE)
+
+def test_unknown_citation_caught():
+    assert verify_review(review(evidence_ids=['invented']),EVIDENCE)
 
 @pytest.mark.skipif(importlib.util.find_spec('crewai') is None,reason='optional ai extra not installed')
-def test_real_crew_constructs_tasks_and_rejects_unknown_evidence(monkeypatch):
+def test_actual_crew_constructs_and_flags_output(monkeypatch):
     import crewai
     monkeypatch.setenv('OPENAI_API_KEY','offline-test-not-a-key')
     monkeypatch.setenv('CREWAI_TELEMETRY_DISABLED','true')
     def kickoff(self):
         assert len(self.agents)==3 and len(self.tasks)==3
         assert all(not a.tools for a in self.agents)
-        return SimpleNamespace(pydantic=Review(thesis='Bounded',counterargument='Uncertain',evidence_ids=['known'],uncertainties=['No fundamentals']),token_usage={})
+        return SimpleNamespace(pydantic=review(),token_usage={})
     monkeypatch.setattr(crewai.Crew,'kickoff',kickoff)
-    assert run_crew([{'sha256':'known'}],'Review')['status']=='HUMAN_REVIEW_REQUIRED'
-    with pytest.raises(ValueError,match='unknown evidence'): run_crew([{'sha256':'different'}],'Review')
+    assert run_crew(EVIDENCE,'Review')['status']=='HUMAN_REVIEW_REQUIRED'
+    assert run_crew([dict(ticker='XOM',sha256='xom',volatility_pct=10)],'Review')['status']=='CORRECTION_REQUIRED'
