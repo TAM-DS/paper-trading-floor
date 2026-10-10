@@ -1,61 +1,43 @@
-# Paper trading floor
+# Paper Trading Floor · v2
 
-A deterministic cycle, three stdio MCP servers, one in-memory paper book. Research can request a power, gas, or equity action. The quote handler returns a synthetic fixture with a unit and an as-of time. Risk allows or denies. The OMS can write a paper fill. It cannot write a street fill.
+A persistent, long-only historical paper simulator with explicit local human confirmation and independent cash, position, evidence, and replay checks.
 
-## MCP servers and tools
+## Run in PyCharm or a terminal
 
-- `market`: `get_curve`, `get_quote`
-- `risk`: `check_limit`
-- `oms`: `submit_paper_order`
-
-`place_venue_order` is not exposed by any MCP server. Protocol tests call it and verify an MCP error on all three servers. The local fixture handlers also deny it.
-
-## What a cycle proves
-
-An in-limit ERCOT Houston hub intent receives a paper fill and a rejected venue attempt. An over-limit Henry Hub intent stops at risk. A paper fill has `venue: null`.
-
-[servers.py](src/floor/servers.py) wraps the local fixture handlers with the official Python MCP SDK (pinned to 1.30.0). Each server runs in a separate stdio subprocess with MCP initialization, tool discovery, input schemas, and tool calls. [client.py](src/floor/client.py) runs a fixture cycle through all three actual MCP sessions. The original `run_cycle()` remains a local deterministic unit-test path; no live model orchestration is claimed. The OMS independently rechecks the symbol/book pairing, positive finite notional, fixture as-of date, and limit; a caller-supplied risk flag is not authority.
-
-## What it does not do
-
-- No broker, no TT, no ICE, no OMS outside this process.
-- Fixtures are not live ERCOT or Henry Hub prices.
-- A paper fill is not a P&L claim.
-- No human approval workflow, authenticated identity, durable book, replay protection, or production risk control.
-- The date and limits belong to a fixed scenario, not current market conditions.
-
-## Run
+Clone this repository, open its folder in PyCharm, and select a Python 3.11–3.13 virtual environment. From the project terminal:
 
 ```bash
-python -m pip install -e ".[dev]"
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev,ai]"
 python -m pytest
-python -m floor.client
+python -m streamlit run app.py
 ```
 
-Related: [capital-markets-research-desk](https://github.com/TAM-DS/capital-markets-research-desk) produces the memo. [investment-gems](https://github.com/TAM-DS/investment-gems) produces a watchlist. Neither is an order on this floor.
+Set `MASSIVE_API_KEY` and, for optional model review, `OPENAI_API_KEY` in your local run configuration environment variables. `CREWAI_MODEL` defaults to `openai/gpt-4.1-mini`; override with an available CrewAI-compatible model. Keys never belong in GitHub or chat. `.env.example` documents variable names; the app does not automatically load `.env`.
 
-## Dashboard
+## Three explicit data modes
 
-Open [docs/index.html](docs/index.html). It shows the same fixture decisions as the tests. It is not a live market feed.
+- **demo**: generated synthetic daily bars; needs no keys and proves workflow mechanics only.
+- **massive**: retrieves actual split-adjusted daily OHLCV through Massive's REST API. Free Basic is end-of-day, five requests/minute, two years of history. Requests are paced at 12.5 seconds per session; multiple simultaneous processes share the account limit and may receive HTTP 429.
+- **cache**: reads a previously fetched response for the exact ticker/date range. No silent fallback or claim that cached data is current.
 
-## Start a server from an MCP host
+Choose 1–5 US equity/ETF tickers and at least 60 trading sessions. Energy equities/ETFs such as XLE, XOM, and LNG are proxies, not ERCOT power or Henry Hub spot data. Data is checked for finite prices, OHLC consistency, ordered timestamps, date bounds, and sufficient history. Each evidence package carries its source, as-of date, provider request ID when available, and SHA-256 digest.
 
-After installation, each MCP host launches one of these stdio commands:
+## Actual CrewAI execution
 
-```bash
-python -m floor.servers market
-python -m floor.servers risk
-python -m floor.servers oms
-```
+The optional review creates a sequential Crew with three Agents and three Tasks, then calls `kickoff()`: market researcher → skeptical risk reviewer → evidence editor. The final output uses a Pydantic schema. Unknown evidence identifiers are rejected. Agents receive precomputed metrics, have no external tools, and cannot submit orders. Identifier validation does not prove semantic accuracy; all model text requires human review. Model use incurs provider charges. A failed call accepts no new review.
 
-These wait for an MCP client on stdin; they are not interactive terminals or HTTP feeds.
+## Financial interpretation
 
-## Verified scope
+Returns, 20-session momentum, annualized daily-return volatility, maximum price drawdown, and average daily dollar volume are calculated in Python, never by a model. Historical SMA20 evaluation uses a fixed rule, the final 30% of observations as a chronological holdout, prior-close signals, next-open execution, open-to-open returns, and configurable one-way costs. No optimization is performed. Prices are split-adjusted, not total returns; dividends, financing, market impact, and point-in-time universe selection are not modeled. A positive result is not a forecast or a profitability claim.
 
-On October 7, 2026, 15 tests passed, including two protocol integration tests. Three separate processes completed MCP initialization and tool discovery. The client called the fixture curve, risk check, and paper submission over stdio, and verified venue-tool rejection. The OMS independently rejected an over-limit protocol submission.
+## Review boundary and limitations
 
-- [Captured MCP fixture result](docs/mcp-proof.json)
-- [Protocol tests](tests/test_protocol.py)
-- [Dashboard file](docs/index.html) — static fixture view, not live market data or a running frontend.
+This is a local portfolio research/simulation application, not customer production. No broker, exchange connection, or real-money execution exists. Reviewer names in the paper app are local audit labels, not authenticated identities. Synthetic demos and static legacy dashboards remain clearly labeled. Live Massive and model calls must be verified with locally configured credentials; offline tests do not establish provider connectivity. Check provider licensing before redistributing downloaded data.
 
-The paper book is process-local and resets when the OMS process exits. A protocol transport does not establish customer-production readiness, authenticated human approval, or a live trading system.
+## Existing evidence
+
+[Legacy fixture scope](docs/legacy-fixture-scope.md) preserves the previous deterministic/protocol implementation and its limitations. Existing tests remain alongside the new market-data tests. The interactive app is `app.py`; `docs/index.html` remains the older static fixture view.
+
+[Massive aggregate API](https://massive.com/docs/rest/stocks/aggregates/custom-bars) · [CrewAI documentation](https://docs.crewai.com/)
