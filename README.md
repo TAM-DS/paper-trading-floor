@@ -43,6 +43,27 @@ A local Massive run loaded **167 XLE daily bars** through **October 9, 2026**. T
 
 The fill row included a ticket ID, evidence digest, reviewer label, and timestamp. A browser refresh preserved the same fill, position, and cash. This establishes the demonstrated local recording and persistence flow; automated tests separately exercise rejected submissions.
 
+## Application screenshots
+
+Local demonstrations captured on October 10, 2026. These show historical research and simulation; they do not establish investment suitability, profitable trading, or production readiness.
+
+![paper-trading-floor historical market evidence](docs/screenshots/01-market-evidence.png)
+
+XLE historical evidence through October 9, with 167 validated daily bars and a $65.08 historical close.
+
+<details>
+<summary>View the workflow and CrewAI review</summary>
+
+![paper-trading-floor workflow](docs/screenshots/02-persistent-paper-ledger.png)
+
+The retained local paper ledger shows 10 XLE shares and $99,348.55 cash after a simulated buy, including the fee, ticket ID, evidence digest, reviewer label, and timestamp. Reviewer text is an audit label, not authenticated identity.
+
+![paper-trading-floor CrewAI human-review result](docs/screenshots/03-crewai-review.png)
+
+A completed bounded CrewAI review. The selected universe contains only XLE, so highest/lowest labels compare a one-symbol set; they are not market-wide rankings. Qualitative narrative remains unverified.
+
+</details>
+
 ## Try the paper workflow
 
 1. Load evidence and inspect the historical source/date.
@@ -70,7 +91,7 @@ Preparing a ticket does not record a fill. The paper workflow is independent of 
 
 The optional review constructs three actual agents and tasks, then calls `Crew.kickoff()` in sequence: **market researcher → skeptical risk reviewer → evidence editor**. Agents receive calculated evidence, have no external tools, and cannot delegate or submit orders.
 
-The final Pydantic output contains a thesis, counterargument, evidence citations, uncertainties, and structured metric claims. Python checks citation membership, numeric values, and highest/lowest rankings against the loaded evidence. Drawdown is signed: the most negative value is the deepest loss. Rankings are only relative to the selected universe; they have little meaning for a single security.
+The final Pydantic output contains a thesis, counterargument, evidence citations, uncertainties, and structured metric claims. Agents cite short references such as `E1`. Python resolves only exact registered references to the full evidence hashes; it does not guess or repair mistyped citations. The audit retains the reference map, raw model output, and resolved review. Python checks citation membership, numeric values, and highest/lowest rankings against the loaded evidence. Drawdown is signed: the most negative value is the deepest loss. Rankings are only relative to the selected universe; they have little meaning for a single security.
 
 | Review status | Meaning |
 |---|---|
@@ -124,7 +145,7 @@ Select one to five tickers and a range with at least sixty trading sessions. Loa
 
 ## Verification and scope
 
-**Latest local verification: 51 tests passed on October 10, 2026.** Tests cover market validation and analytics, structured claim checks, bounded correction, dashboard rendering, and retained fixture behavior. AI orchestration tests construct CrewAI objects with model calls mocked; they do not contact providers. The demonstration observations above come from separate locally credentialed runs inspected through the application screenshots.
+**Latest local verification: 57 tests passed on October 10, 2026.** Tests cover market validation and analytics, structured claim checks, exact reference resolution, preserved raw audit output, bounded correction, dashboard rendering, and retained fixture behavior. AI orchestration tests construct CrewAI objects with model calls mocked; they do not contact providers. The demonstration observations above come from separate locally credentialed runs inspected through the application screenshots.
 
 The interactive application is [app.py](app.py). The older [static dashboard](docs/index.html) is a fixture view, and [legacy fixture scope](docs/legacy-fixture-scope.md) preserves its original implementation and limitations. This project is portfolio evidence of a local research/simulation system; it is not customer production or proof of profitable execution.
 
