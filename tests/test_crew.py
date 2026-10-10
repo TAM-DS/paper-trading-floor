@@ -115,3 +115,9 @@ def test_grounded_counterargument_total_return_limitation_allowed():
     text='Price observations alone cannot establish investment suitability or predict future performance, as they exclude dividend income and fundamental business factors that materially affect total returns and risk profiles.'
     assert verify_review(review(counterargument=text),EVIDENCE)==[]
     assert verify_review(review(counterargument=text+" Total return is strong."),EVIDENCE)
+
+
+def test_missing_dividend_disclosure_is_not_a_return_claim():
+    text='Dividend income and business fundamentals are absent from this evidence, introducing uncertainty regarding total return and company-specific risk factors.'
+    assert verify_review(review(uncertainties=[text]), EVIDENCE) == []
+    assert verify_review(review(uncertainties=[text+" Strong total return is assured."]), EVIDENCE)

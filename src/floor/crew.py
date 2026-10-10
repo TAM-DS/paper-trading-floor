@@ -43,7 +43,7 @@ def verify_review(review, evidence):
         matches=re.findall(r'\d+(?:\.\d+)?|%|\$|\b(?:highest|lowest|largest|smallest|higher|lower|greater|superior|inferior|more stable|most volatile|least volatile|outperform\w*)\b',prose,re.I)
         if matches:
             issues.append(f'Unchecked numerical or ranking language in narrative {field}: {", ".join(dict.fromkeys(matches))}. Move comparisons to structured claims; rewrite this field as a limitation or research question.')
-        disclosure = (field.startswith('uncertainties[') and prose.strip().casefold() == 'dividend income and total return data are not included.') or (field == 'counterargument' and prose.strip().casefold() == 'price observations alone cannot establish investment suitability or predict future performance, as they exclude dividend income and fundamental business factors that materially affect total returns and risk profiles.')
+        disclosure = (field.startswith('uncertainties[') and prose.strip().casefold() in {'dividend income and total return data are not included.', 'dividend income and business fundamentals are absent from this evidence, introducing uncertainty regarding total return and company-specific risk factors.'}) or (field == 'counterargument' and prose.strip().casefold() == 'price observations alone cannot establish investment suitability or predict future performance, as they exclude dividend income and fundamental business factors that materially affect total returns and risk profiles.')
         if re.search(r'\btotal[ -]returns?\b',prose,re.I) and not disclosure:
             issues.append(f'{field}: Total-return claim unsupported: dividends excluded')
     return list(dict.fromkeys(issues))
