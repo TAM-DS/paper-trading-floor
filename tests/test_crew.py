@@ -121,3 +121,10 @@ def test_missing_dividend_disclosure_is_not_a_return_claim():
     text='Dividend income and business fundamentals are absent from this evidence, introducing uncertainty regarding total return and company-specific risk factors.'
     assert verify_review(review(uncertainties=[text]), EVIDENCE) == []
     assert verify_review(review(uncertainties=[text+" Strong total return is assured."]), EVIDENCE)
+
+
+def test_excluded_total_return_effects_disclosure():
+    text="Dividend income and total return effects are not included."
+    assert verify_review(review(uncertainties=[text]), EVIDENCE) == []
+    assert verify_review(review(uncertainties=[text+" Total return is strong."]), EVIDENCE)
+    assert verify_review(review(thesis=text), EVIDENCE)

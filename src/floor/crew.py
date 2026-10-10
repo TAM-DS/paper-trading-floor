@@ -43,7 +43,7 @@ def verify_review(review, evidence):
         matches=re.findall(r'\d+(?:\.\d+)?|%|\$|\b(?:highest|lowest|largest|smallest|higher|lower|greater|superior|inferior|more stable|most volatile|least volatile|outperform\w*)\b',prose,re.I)
         if matches:
             issues.append(f'Unchecked numerical or ranking language in narrative {field}: {", ".join(dict.fromkeys(matches))}. Move comparisons to structured claims; rewrite this field as a limitation or research question.')
-        disclosure = (field.startswith('uncertainties[') and prose.strip().casefold() in {'dividend income and total return data are not included.', 'dividend income and business fundamentals are absent from this evidence, introducing uncertainty regarding total return and company-specific risk factors.'}) or (field == 'counterargument' and prose.strip().casefold() == 'price observations alone cannot establish investment suitability or predict future performance, as they exclude dividend income and fundamental business factors that materially affect total returns and risk profiles.')
+        disclosure = (field.startswith('uncertainties[') and prose.strip().casefold() in {'dividend income and total return effects are not included.', 'dividend income and total return data are not included.', 'dividend income and business fundamentals are absent from this evidence, introducing uncertainty regarding total return and company-specific risk factors.'}) or (field == 'counterargument' and prose.strip().casefold() == 'price observations alone cannot establish investment suitability or predict future performance, as they exclude dividend income and fundamental business factors that materially affect total returns and risk profiles.')
         if re.search(r'\btotal[ -]returns?\b',prose,re.I) and not disclosure:
             issues.append(f'{field}: Total-return claim unsupported: dividends excluded')
     return list(dict.fromkeys(issues))
@@ -67,7 +67,7 @@ def run_crew(evidence,purpose):
         'Describe research scope, limitations and questions instead of comparing securities or recommending suitability. '
         'Example thesis: The supplied price evidence supports a historical screening discussion. '
         'Example counterargument: Price observations alone cannot establish investment suitability. '
-        'Example uncertainty: Dividend income and business fundamentals are absent from this evidence.')
+        'For dividend limitations, use exactly: Dividend income and business fundamentals are absent from this evidence. Do not mention total return in narrative.')
         kwargs=dict(description=instructions,expected_output='Structured evidence-grounded brief with claims, qualitative narrative, exact citations and uncertainties.',agent=agent)
         if tasks: kwargs['context']=tasks.copy()
         if i==2: kwargs['output_pydantic']=Review
@@ -86,6 +86,7 @@ def run_crew(evidence,purpose):
         'Do not use higher, lower, greater, superior, inferior, more stable, or outperform in prose. '
         'Rewrite prose as concise research limitations or questions, not comparisons or suitability advice. '
         'Allowed example: Price observations alone cannot establish investment suitability. '
+        'For dividend limitations, use exactly: Dividend income and business fundamentals are absent from this evidence. Remove all mentions of total return from narrative. '
         'Return the complete Review schema.')
         repair_agent=Agent(role='Independent evidence correction editor',goal='Resolve every reported validation issue',backstory='Bounded research correction only. No order authority.',llm=llm,allow_delegation=False,max_iter=3,verbose=False)
         repair=Task(description=instruction,expected_output='Corrected structured Review',agent=repair_agent,output_pydantic=Review)
