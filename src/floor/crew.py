@@ -36,11 +36,14 @@ def verify_review(review, evidence):
             vals=[r[claim.metric] for r in evidence]
             target=max(vals) if claim.comparison=='highest' else min(vals)
             if actual!=target: issues.append(f"{row['ticker']}: incorrect {claim.comparison} {claim.metric} ranking")
-    # Prose cannot carry numeric/ranking claims; those belong in checked fields.
-    for prose in [review.thesis,review.counterargument,*review.uncertainties]:
-        if re.search(r'\d|%|\$|\b(highest|lowest|largest|smallest|most volatile|least volatile|outperform\w*)\b',prose,re.I):
-            issues.append('Unchecked numerical or ranking language in narrative')
-        if re.search(r'\btotal[ -]returns?\b',prose,re.I): issues.append('Total-return claim unsupported: dividends excluded')
+    # Report the exact field and offending text so correction is actionable.
+    narratives=[('thesis',review.thesis),('counterargument',review.counterargument)]
+    narratives.extend((f'uncertainties[{i}]',text) for i,text in enumerate(review.uncertainties))
+    for field,prose in narratives:
+        matches=re.findall(r'\d+(?:\.\d+)?|%|\$|\b(?:highest|lowest|largest|smallest|higher|lower|greater|superior|inferior|more stable|most volatile|least volatile|outperform\w*)\b',prose,re.I)
+        if matches:
+            issues.append(f'Unchecked numerical or ranking language in narrative {field}: {", ".join(dict.fromkeys(matches))}. Move comparisons to structured claims; rewrite this field as a limitation or research question.')
+        if re.search(r'\btotal[ -]returns?\b',prose,re.I): issues.append(f'{field}: Total-return claim unsupported: dividends excluded')
     return list(dict.fromkeys(issues))
 
 def run_crew(evidence,purpose):
@@ -57,7 +60,12 @@ def run_crew(evidence,purpose):
         'Return thesis, counterargument, evidence_ids, uncertainties, and at least one structured claim with evidence_id (exact sha256), metric, value, comparison (observation/highest/lowest). '
         'All numeric values and rankings MUST appear only in claims, not narrative. Narrative must contain no digits, percentages, dollar signs, or superlatives/rankings. '
         'Use price return wording. Never claim total return. Date range and daily frequency are supplied. No external facts, forecasts, order instructions, or assertions about fundamentals. '
-        'Evidence IDs are citations, not authentication of narrative correctness. Keep narrative concise and qualitative.')
+        'Evidence IDs are citations, not authentication of narrative correctness. Keep narrative concise and qualitative. '
+        'Do not use higher, lower, greater, superior, inferior, more stable, or outperform in prose. '
+        'Describe research scope, limitations and questions instead of comparing securities or recommending suitability. '
+        'Example thesis: The supplied price evidence supports a historical screening discussion. '
+        'Example counterargument: Price observations alone cannot establish investment suitability. '
+        'Example uncertainty: Dividend income and business fundamentals are absent from this evidence.')
         kwargs=dict(description=instructions,expected_output='Structured evidence-grounded brief with claims, qualitative narrative, exact citations and uncertainties.',agent=agent)
         if tasks: kwargs['context']=tasks.copy()
         if i==2: kwargs['output_pydantic']=Review
@@ -72,10 +80,15 @@ def run_crew(evidence,purpose):
         f'Python-verified rankings: {json.dumps(rankings)}. Failed draft: {review.model_dump_json()}. Validation errors: {json.dumps(issues)}. '
         'All numeric values and comparisons belong only in structured claims. Narrative must have no digits, percentage or dollar signs, or ranking/superlative words. '
         'Claims use exact evidence sha256, metric, numeric value, comparison. Prefer observation unless a ranking is essential. '
-        'Deepest negative drawdown is lowest. Do not invent total returns or fundamental facts. Return the complete Review schema.')
-        repair=Task(description=instruction,expected_output='Corrected structured Review',agent=agents[-1],output_pydantic=Review)
+        'Deepest negative drawdown is lowest. Do not invent total returns or fundamental facts. '
+        'Do not use higher, lower, greater, superior, inferior, more stable, or outperform in prose. '
+        'Rewrite prose as concise research limitations or questions, not comparisons or suitability advice. '
+        'Allowed example: Price observations alone cannot establish investment suitability. '
+        'Return the complete Review schema.')
+        repair_agent=Agent(role='Independent evidence correction editor',goal='Resolve every reported validation issue',backstory='Bounded research correction only. No order authority.',llm=llm,allow_delegation=False,max_iter=3,verbose=False)
+        repair=Task(description=instruction,expected_output='Corrected structured Review',agent=repair_agent,output_pydantic=Review)
         try:
-            corrected=Crew(agents=[agents[-1]],tasks=[repair],process=Process.sequential,verbose=False).kickoff()
+            corrected=Crew(agents=[repair_agent],tasks=[repair],process=Process.sequential,verbose=False).kickoff()
             if corrected.pydantic is None: raise ValueError('Missing corrected schema')
             review=corrected.pydantic
             issues=verify_review(review,evidence)

@@ -64,3 +64,33 @@ def test_deepest_signed_drawdown_is_lowest():
     assert verify_review(good,evidence)==[]
     bad=good.model_copy(update={'claims':[Claim(evidence_id='lng',metric='max_drawdown_pct',value=-24,comparison='highest')]})
     assert verify_review(bad,evidence)
+
+
+@pytest.mark.parametrize('text',['higher price return','lower volatility','superior price return','more stable profile','outperform'])
+def test_comparative_prose_requires_structured_claim(text):
+    issues=verify_review(review(counterargument=text),EVIDENCE)
+    assert any('counterargument' in issue and text.split()[0] in issue for issue in issues)
+
+
+def test_correction_feedback_names_uncertainty_and_token():
+    issues=verify_review(review(uncertainties=['The sample covers 167 sessions.']),EVIDENCE)
+    assert any('uncertainties[0]' in issue and '167' in issue for issue in issues)
+
+
+@pytest.mark.skipif(importlib.util.find_spec('crewai') is None,reason='optional ai extra not installed')
+def test_repair_uses_independent_editor_and_exact_feedback(monkeypatch):
+    import crewai
+    monkeypatch.setenv('OPENAI_API_KEY','offline-test-not-a-key')
+    first_agents=[]
+    def kickoff(self):
+        if len(self.tasks)==3:
+            first_agents.extend(self.agents)
+            return SimpleNamespace(pydantic=review(counterargument='May outperform.'),token_usage={})
+        assert self.agents[0] is not first_agents[-1]
+        assert not self.agents[0].tools
+        assert 'counterargument: outperform' in self.tasks[0].description
+        return SimpleNamespace(pydantic=review(),token_usage={})
+    monkeypatch.setattr(crewai.Crew,'kickoff',kickoff)
+    result=run_crew(EVIDENCE,'Review')
+    assert result['status']=='HUMAN_REVIEW_REQUIRED'
+    assert len(result['attempts'])==2

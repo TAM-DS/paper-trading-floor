@@ -51,3 +51,5 @@ python -m streamlit run app.py
 The review shows qualitative thesis, challenge, checked observations and uncertainties. Passing structured checks does not establish semantic correctness or authorize a trade.
 
 A failed review receives at most one additional editor correction call with exact validation feedback and Python-calculated signed rankings. Both attempts remain in the audit record. Correction adds model usage; if it fails, the draft remains flagged.
+
+Review correction uses an independent editor and names each offending narrative field and token. Comparative prose (including higher/lower and outperform) remains blocked; market comparisons belong in validated structured claims. A successful check validates structured facts, not investment suitability or the meaning of every sentence.
